@@ -1,0 +1,6 @@
+{
+  "name": "Cắt đi nỗi sầu",
+  "description": "Ứng dụng sổ tay xả stress và chữa lành cảm xúc dành cho học sinh, sinh viên với lời an ủi ấm áp và các mini game giải tỏa căng thẳng.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
