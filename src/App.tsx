@@ -109,6 +109,12 @@ export default function App() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
+  const handleUpdateEntry = (id: string, updatedFields: Partial<DiaryEntry>) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...updatedFields } : e))
+    );
+  };
+
   const handleClearAllEntries = () => {
     setEntries([]);
   };
@@ -273,6 +279,7 @@ export default function App() {
             onOpenGame={handleLaunchGame}
             onNavigateToTab={handleSelectTab}
             recentEntry={entries.length > 0 && entries[0].comfortAdvice ? entries[0] : null}
+            entries={entries}
           />
         )}
 
@@ -290,6 +297,7 @@ export default function App() {
           <EmotionDiary
             entries={entries}
             onDeleteEntry={handleDeleteEntry}
+            onUpdateEntry={handleUpdateEntry}
             onClearAll={handleClearAllEntries}
             onOpenVent={() => handleSelectTab('vent_write')}
           />

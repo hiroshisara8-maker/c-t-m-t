@@ -12,12 +12,17 @@ import {
   Smile, 
   Sparkles,
   ArrowUpDown,
-  FileText
+  FileText,
+  Pencil,
+  Check,
+  X,
+  BarChart3
 } from 'lucide-react';
 
 interface EmotionDiaryProps {
   entries: DiaryEntry[];
   onDeleteEntry: (id: string) => void;
+  onUpdateEntry?: (id: string, updatedFields: Partial<DiaryEntry>) => void;
   onClearAll: () => void;
   onOpenVent: () => void;
 }
@@ -25,12 +30,19 @@ interface EmotionDiaryProps {
 export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
   entries,
   onDeleteEntry,
+  onUpdateEntry,
   onClearAll,
   onOpenVent,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterMood, setFilterMood] = useState<string>('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Edit entry state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState<string>('');
+  const [editContent, setEditContent] = useState<string>('');
+  const [editMood, setEditMood] = useState<MoodType>('stressed');
 
   const filteredEntries = entries.filter((item) => {
     const matchSearch =
@@ -46,6 +58,31 @@ export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
     soundManager.playPaperRip();
     onDeleteEntry(id);
     setConfirmDeleteId(null);
+  };
+
+  const startEditing = (entry: DiaryEntry) => {
+    setEditingId(entry.id);
+    setEditTitle(entry.title || '');
+    setEditContent(entry.content);
+    setEditMood(entry.mood);
+    soundManager.playClick();
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    soundManager.playClick();
+  };
+
+  const saveEditing = (id: string) => {
+    if (onUpdateEntry) {
+      onUpdateEntry(id, {
+        title: editTitle.trim() || undefined,
+        content: editContent.trim(),
+        mood: editMood,
+      });
+      soundManager.playComfortChime();
+    }
+    setEditingId(null);
   };
 
   const getMoodBadge = (mId: MoodType) => {
@@ -88,30 +125,41 @@ export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
               </h3>
             </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Nơi lưu giữ hành trình bạn dũng cảm đối diện và vượt qua những ngày khó khăn.
+              Nơi lưu giữ hành trình bạn dũng cảm đối diện, ghi lại cảm xúc và tìm thấy sự an ủi mỗi ngày.
             </p>
           </div>
 
-          {entries.length > 0 && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                if (window.confirm('Bạn có chắc muốn xóa toàn bộ nhật ký cảm xúc không? Hành động này không thể hoàn tác.')) {
-                  onClearAll();
-                  soundManager.playPaperRip();
-                }
-              }}
-              className="text-stone-400 hover:text-rose-600 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              onClick={onOpenVent}
+              className="bg-rose-500 hover:bg-rose-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Xóa sạch nhật ký</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Điểm danh cảm xúc ngay</span>
             </button>
-          )}
+
+            {entries.length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Bạn có chắc muốn xóa toàn bộ nhật ký cảm xúc không? Hành động này không thể hoàn tác.')) {
+                    onClearAll();
+                    soundManager.playPaperRip();
+                  }
+                }}
+                className="text-stone-400 hover:text-rose-600 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-rose-50"
+                title="Xóa toàn bộ nhật ký"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Xóa sạch</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Quick Insight Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
           <div className="bg-rose-50/70 border border-rose-100 rounded-2xl p-3 text-center">
-            <span className="text-[11px] font-bold text-rose-700 block">Tổng số lần xả lòng</span>
+            <span className="text-[11px] font-bold text-rose-700 block">Tổng số lần ghi nhận</span>
             <span className="text-2xl font-extrabold text-stone-800 font-display">
               {entries.length}
             </span>
@@ -129,6 +177,52 @@ export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
             <span className="text-2xl font-extrabold text-stone-800 font-display">
               {entries.reduce((acc, curr) => acc + (curr.playedGames?.length || 0), 0)}
             </span>
+          </div>
+        </div>
+
+        {/* Bản đồ cảm xúc & Phân bố tâm trạng (Mood Journey Distribution) */}
+        <div className="bg-stone-50/90 rounded-2xl p-3 border border-stone-200/70">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5 text-rose-500" />
+              <span>Bản đồ cảm xúc đã lưu của bạn (Bấm để lọc):</span>
+            </span>
+            {filterMood !== 'all' && (
+              <button
+                onClick={() => setFilterMood('all')}
+                className="text-[11px] text-rose-600 font-semibold hover:underline cursor-pointer"
+              >
+                Xem tất cả
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {MOODS.map((m) => {
+              const count = entries.filter((e) => e.mood === m.id).length;
+              const isFiltered = filterMood === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    soundManager.playClick();
+                    setFilterMood(isFiltered ? 'all' : m.id);
+                  }}
+                  className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                    isFiltered
+                      ? `${m.bgPastel} ${m.borderPastel} border-2 shadow-xs scale-102 ring-2 ring-stone-300`
+                      : count > 0
+                      ? 'bg-white hover:bg-stone-100 border-stone-200 text-stone-800'
+                      : 'bg-white/50 border-stone-200/50 text-stone-400 opacity-60'
+                  }`}
+                >
+                  <span className="text-base">{m.emoji}</span>
+                  <span className="text-[11px] font-bold truncate max-w-full">{m.label}</span>
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${count > 0 ? 'bg-stone-200/70 text-stone-800' : 'text-stone-400'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -213,6 +307,11 @@ export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-stone-100">
                   <div className="flex items-center gap-2 flex-wrap">
                     {getMoodBadge(entry.mood)}
+                    {entry.isQuickCheckIn && (
+                      <span className="bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold shadow-2xs">
+                        ✨ Điểm danh cảm xúc
+                      </span>
+                    )}
                     {categoryLabel && (
                       <span className="bg-stone-100 text-stone-600 px-2.5 py-1 rounded-full text-xs font-medium">
                         {categoryLabel}
@@ -221,11 +320,22 @@ export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
                     {getAfterMoodBadge(entry.afterMood)}
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs text-stone-400">
+                  <div className="flex items-center gap-2.5 text-xs text-stone-400">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
                       {entry.dateDisplay} • {entry.timeDisplay}
                     </span>
+
+                    {/* Edit button */}
+                    {onUpdateEntry && editingId !== entry.id && (
+                      <button
+                        onClick={() => startEditing(entry)}
+                        className="text-stone-400 hover:text-stone-700 hover:bg-stone-100 p-1.5 rounded-lg transition-colors cursor-pointer"
+                        title="Chỉnh sửa cảm xúc và ghi chú"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
 
                     {/* Delete button (Chức năng 6: Xóa tâm sự) */}
                     {confirmDeleteId === entry.id ? (
@@ -247,28 +357,106 @@ export const EmotionDiary: React.FC<EmotionDiaryProps> = ({
                     ) : (
                       <button
                         onClick={() => setConfirmDeleteId(entry.id)}
-                        className="text-stone-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
+                        className="text-stone-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors cursor-pointer"
                         title="Xóa tâm sự này"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Optional Title */}
-                {entry.title && (
-                  <h4 className="text-base font-bold font-display text-stone-800 mb-2">
-                    {entry.title}
-                  </h4>
-                )}
+                {/* Edit Form if editingId === entry.id */}
+                {editingId === entry.id ? (
+                  <div className="bg-stone-50 rounded-2xl p-4 border-2 border-rose-200 mb-3 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-stone-700">
+                        Chỉnh sửa cảm xúc &amp; ghi chú:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={cancelEditing}
+                          className="px-2.5 py-1 text-xs rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                          <span>Hủy</span>
+                        </button>
+                        <button
+                          onClick={() => saveEditing(entry.id)}
+                          className="px-3 py-1 text-xs rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>Lưu thay đổi</span>
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Vent Content Body */}
-                <div className="bg-[#fdfbf7] rounded-2xl p-4 border border-stone-200/70 mb-3 notebook-lines-clean">
-                  <p className="text-xs md:text-sm font-handwriting leading-relaxed text-stone-800 whitespace-pre-line">
-                    {entry.content}
-                  </p>
-                </div>
+                    {/* Mood picker */}
+                    <div>
+                      <span className="text-[11px] text-stone-500 font-medium block mb-1.5">
+                        Chọn lại cảm xúc:
+                      </span>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                        {MOODS.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setEditMood(m.id);
+                              soundManager.playClick();
+                            }}
+                            className={`p-1.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center gap-1 text-xs font-bold ${
+                              editMood === m.id
+                                ? `${m.bgPastel} ${m.borderPastel} border-2 scale-102 ring-1 ring-stone-300`
+                                : 'bg-white border-stone-200 opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <span>{m.emoji}</span>
+                            <span className="text-[11px]">{m.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Title */}
+                    <div>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        placeholder="Tiêu đề nhật ký..."
+                        className="w-full bg-white border border-stone-200 rounded-xl px-3 py-1.5 text-xs font-bold text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-rose-200"
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div>
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        rows={4}
+                        placeholder="Nội dung cảm xúc..."
+                        className="w-full bg-white border border-stone-200 rounded-xl p-3 text-xs md:text-sm text-stone-800 focus:outline-hidden focus:ring-2 focus:ring-rose-200 resize-none font-handwriting leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Optional Title */}
+                    {entry.title && (
+                      <h4 className="text-base font-bold font-display text-stone-800 mb-2">
+                        {entry.title}
+                      </h4>
+                    )}
+
+                    {/* Vent Content Body */}
+                    <div className="bg-[#fdfbf7] rounded-2xl p-4 border border-stone-200/70 mb-3 notebook-lines-clean">
+                      <p className="text-xs md:text-sm font-handwriting leading-relaxed text-stone-800 whitespace-pre-line">
+                        {entry.content}
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 {/* Comfort Advice Section if available */}
                 {entry.comfortAdvice && (

@@ -76,8 +76,14 @@ Hãy đóng vai một người bạn luôn lắng nghe không phán xét, ôm l�
 }`;
 
         try {
-          const response = await client.models.generateContent({
-            model: "gemini-3.8-flash",
+          // Timeout promise of 4 seconds to guarantee immediate snappy response
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("AI_TIMEOUT")), 4000)
+          );
+
+          // Try gemini-3.1-flash-lite first for rapid and stable response
+          const aiCallPromise = client.models.generateContent({
+            model: "gemini-3.1-flash-lite",
             contents: prompt,
             config: {
               responseMimeType: "application/json",
@@ -85,16 +91,20 @@ Hãy đóng vai một người bạn luôn lắng nghe không phán xét, ôm l�
             },
           });
 
+          const response = await Promise.race([aiCallPromise, timeoutPromise]);
           const rawText = response.text?.trim() || "";
           const parsed = JSON.parse(rawText);
-          return res.json({
-            success: true,
-            data: parsed,
-            source: "ai",
-          });
-        } catch (aiErr) {
-          console.error("Gemini call error:", aiErr);
-          // Fall through to fallback response
+
+          if (parsed && parsed.comfortMessage) {
+            return res.json({
+              success: true,
+              data: parsed,
+              source: "ai",
+            });
+          }
+        } catch (aiErr: any) {
+          console.warn("AI generation fallback triggered:", aiErr?.message || aiErr);
+          // Fall through to curated fallback response
         }
       }
 

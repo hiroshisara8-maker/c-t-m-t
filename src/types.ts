@@ -78,6 +78,7 @@ export interface DiaryEntry {
   comfortAdvice?: ComfortAdvice;
   playedGames?: MiniGameId[];
   afterMood?: 'better' | 'calmer' | 'lighter' | 'same';
+  isQuickCheckIn?: boolean;
 }
 
 export interface HealingActivity {
